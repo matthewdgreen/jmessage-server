@@ -9,7 +9,7 @@ from datetime import datetime
 import json
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/messages.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/messages.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.secret_key = "W9zmH5FLJuDHNia3xW4yyg=="
 db = SQLAlchemy(app)
