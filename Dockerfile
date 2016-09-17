@@ -5,7 +5,7 @@ MAINTAINER J. Ayo Akinyele <jakinye3@jhu.edu>
 RUN apt-get update && apt-get install -y --no-install-recommends vsftpd
 RUN apt-get clean
 
-RUN pip install flask-sqlalchemy
+RUN pip install psycopg2 flask-sqlalchemy
 
 ADD vsftpd.conf /etc/vsftpd.conf
 

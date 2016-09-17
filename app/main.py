@@ -7,52 +7,29 @@ from flask import Flask, request, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import json
+import os
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/messages.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-app.secret_key = "W9zmH5FLJuDHNia3xW4yyg=="
-db = SQLAlchemy(app)
-debug = False
+debug = True
 # this deletes messages in users inbox after delivery
 delete_after_delivery = True
 
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = str(os.environ.get('DATABASE_URI', 'sqlite:////data/messages.db'))
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.secret_key = "W9zmH5FLJuDHNia3xW4yyg=="
+db = SQLAlchemy(app)
+# import appropriate models
+from models import User, Messages
+
+try:
+    db.create_all()
+    db.session.commit()
+    if debug: print("DB tables created successfully...")
+except:
+    pass
+
 #TODO: add signup/authentication for users
 #TODO: add session management
-
-class User(db.Model):
-    """User model description"""
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(255), unique=True)
-    public_key = db.Column(db.Text)
-
-    def __init__(self, username, pub_key):
-        self.username = username
-        self.public_key = pub_key
-
-    def __str__(self):
-        return "<Username: %s>" % (self.username)
-
-
-class Messages(db.Model):
-    """Message model description"""
-    id = db.Column(db.Integer, primary_key=True)
-    sender = db.Column(db.String(255), db.ForeignKey('user.id'))
-    recipient = db.Column(db.String(255))
-    message_id = db.Column(db.Integer)
-    encrypted_message = db.Column(db.Text)
-    date = db.Column(db.TIMESTAMP)
-
-    def __init__(self, sender, recipient, msg_id, enc_message, date=None):
-        self.sender = sender
-        self.recipient = recipient
-        self.message_id = msg_id
-        self.encrypted_message = enc_message
-        if date is None:
-            self.date = datetime.utcnow()
-        else:
-            self.date = date
-
 
 @app.route('/lookupUsers', methods=['GET'])
 def api_lookup_users():
@@ -70,9 +47,9 @@ def api_lookup_key(userid):
     """lookup a specific user's public key"""
     user = User.query.filter_by(username=userid).first()
     if user:
-        data = {'keyData': user.public_key}
+        data = {'keyData': user.public_key, 'status': "found key"}
     else:
-        data = {'keyData': ""}
+        data = {'keyData': "", 'status': "no registered key"}
     return Response(json.dumps(data), status=200, mimetype='application/json')
 
 
@@ -107,6 +84,11 @@ def api_register_key(userid):
 @app.route('/getMessages/<userid>', methods=['GET'])
 def api_get_messages(userid):
     """get the messages for a given user"""
+    r = User.query.filter_by(username=userid).first()
+    if r is None:
+        data = {'messages': [], 'numMessages': 0}
+        return Response(json.dumps(data), status=200, mimetype='application/json')
+
     message_contents = Messages.query.filter_by(recipient=userid)
     messages = []
     for m in message_contents:
@@ -150,7 +132,12 @@ def api_send_message(userid):
             resp_data['message'] = 'missing message ID'
             return Response(json.dumps(resp_data), status=401, mimetype='application/json')
 
-        m = Messages(userid, recipient, message_id, enc_message)
+        r = User.query.filter_by(username=recipient).first()
+        if r is None:
+            resp_data['message'] = 'no such recipient'
+            return Response(json.dumps(resp_data), status=401, mimetype='application/json')
+
+        m = Messages(userid, r, message_id, enc_message)
         db.session.add(m)
         db.session.commit()
         resp_data['result'] = True
