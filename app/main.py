@@ -89,7 +89,7 @@ def api_get_messages(userid):
         data = {'messages': [], 'numMessages': 0}
         return Response(json.dumps(data), status=200, mimetype='application/json')
 
-    message_contents = Messages.query.filter_by(recipient=userid)
+    message_contents = Messages.query.filter_by(recipient=r.id)
     messages = []
     for m in message_contents:
         timestamp = int((m.date - datetime(1970,1,1)).total_seconds())
