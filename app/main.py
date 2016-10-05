@@ -137,7 +137,7 @@ def api_send_message(userid):
             resp_data['message'] = 'no such recipient'
             return Response(json.dumps(resp_data), status=401, mimetype='application/json')
 
-        m = Messages(userid, r, message_id, enc_message)
+        m = Messages(userid, r.id, message_id, enc_message)
         db.session.add(m)
         db.session.commit()
         resp_data['result'] = True
